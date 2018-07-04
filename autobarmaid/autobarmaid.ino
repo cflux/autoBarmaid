@@ -18,6 +18,8 @@ AceButton button2(btn2Pin);
 
 int btn1State = 0;
 int btn2State = 0;
+int mnuButton = 0;
+int selButton = 0;
 int btnBothState = 0;
 
 ButtonConfig btnCfg;
@@ -26,6 +28,7 @@ void prime();
 void allOFF();
 void pour();
 void pump(int, int);
+void clean();
 
 int lcount = 0; // start at zero
 const int maxCnt = 25;
@@ -33,6 +36,7 @@ const int maxCnt = 25;
 //char* buf = "0000";
 //const int MAX_MENU = 0; // should be below service menu so we can't get there with single press
 const int SERVICE_MENU = 1;
+const int SERVICE_MENU2 = 2;
 const int ROOT_MENU = 0;
 int mnu = ROOT_MENU;
 
@@ -46,7 +50,7 @@ const int pumpGpin = 6;
 const int pumpHpin = 7;
 
 const int primeTime = 1500; // 1.5 sec
-
+const int cleanTime = 10000; // 10 sec
 const int hlfOZTime = 600; // .6 sec to pump an oz
 
 void setup(void)
@@ -94,7 +98,49 @@ void pump(int pin, int ptime)
   delay(ptime); //1 
   digitalWrite(pin, HIGH); // turn on pump
 }
+void clean() {
+  u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
+  u8x8.clear();
+  u8x8.draw2x2String(0,2,"Cleaning");
+  u8x8.draw2x2String(2,5,"Pump A");
+  u8x8.refreshDisplay();
+  // run pumps here:
+  pump(pumpApin,cleanTime);
+  
+  u8x8.draw2x2String(2,5,"Pump B");
+  u8x8.refreshDisplay();
+  pump(pumpBpin,cleanTime);
 
+  u8x8.draw2x2String(2,5,"Pump C");
+  u8x8.refreshDisplay();
+  pump(pumpCpin,cleanTime);
+
+  u8x8.draw2x2String(2,5,"Pump D");
+  u8x8.refreshDisplay();
+  pump(pumpDpin,cleanTime);
+
+  u8x8.draw2x2String(2,5,"Pump E");
+  u8x8.refreshDisplay();
+  pump(pumpEpin,cleanTime);
+
+  u8x8.draw2x2String(2,5,"Pump F");
+  u8x8.refreshDisplay();
+  pump(pumpFpin,cleanTime);
+
+  u8x8.draw2x2String(2,5,"Pump G");
+  u8x8.refreshDisplay();
+  pump(pumpGpin,cleanTime);
+  
+  u8x8.draw2x2String(2,5,"Pump H");
+  u8x8.refreshDisplay();
+  pump(pumpHpin,cleanTime);
+  
+  u8x8.clear();
+  u8x8.draw2x2String(0,2,"Cleaning");
+  u8x8.draw2x2String(3,5,"Done!");
+  u8x8.refreshDisplay();
+  delay(2000); // 2 sec delay
+}
 void prime() {
   u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
   u8x8.clear();
@@ -198,43 +244,55 @@ void loop(void)
   lcount--;
   
    // handel menu button
-  if (btnBothState == 2)
+  if (mnu == ROOT_MENU && btnBothState == 1)
   {
     btnBothState = 0;
-    btn1State = 0;
-    btn2State = 0;
+    //btn1State = 0;
+    //btn2State = 0;
     mnu = SERVICE_MENU;
     u8x8.clear();
     u8x8.refreshDisplay();
-  }
-  // exit service menu
-  if (mnu == SERVICE_MENU && btn1State == 1) { 
-    mnu = ROOT_MENU; // go to next menu
-    btn1State = 0;
+  } else if (mnu == SERVICE_MENU && mnuButton == 1) { 
+    mnu = SERVICE_MENU2; // go to next menu
+    //btnBothState = 0;
+    //btn1State = 0;
+    //btn2State = 0;
+    mnuButton = 0;
     u8x8.clear();
     u8x8.refreshDisplay();
   }
-  if (btn1State == 1 && mnu == ROOT_MENU)
+  else if (mnu == SERVICE_MENU2 && mnuButton == 1) { 
+    mnu = ROOT_MENU; // go to next menu
+    //btn1State = 0;
+    mnuButton = 0;
+    u8x8.clear();
+    u8x8.refreshDisplay();
+  }
+  else if (mnuButton == 1 && mnu == ROOT_MENU)
   {
     // move selection:
     curSelected++;
     if (curSelected >= numDrinks) curSelected =0;    
-    btn1State = 0;
+   //btn1State = 0;
+    mnuButton = 0;
   }
-  if (btn2State == 1 && mnu == ROOT_MENU)
+  else if (selButton == 1 && mnu == ROOT_MENU)
   {
     // pour requested:
     pour();
-    btn2State = 0;
+    //btn2State = 0;
+    selButton = 0;
     u8x8.clear();
     u8x8.refreshDisplay();
   }
-  int ofirst = first;
-  first = (curSelected / maxPerPage) * maxPerPage; // select the correct page
-  if (first != ofirst) {
-    // page change:
-    u8x8.clear();
-    u8x8.refreshDisplay();
+  if (mnu == ROOT_MENU) {
+    int ofirst = first;
+    first = (curSelected / maxPerPage) * maxPerPage; // select the correct page
+    if (first != ofirst) {
+      // page change:
+      u8x8.clear();
+      u8x8.refreshDisplay();
+    }
   }
   if (lcount < 1) {
     lcount = maxCnt;  
@@ -264,9 +322,24 @@ void loop(void)
         u8x8.drawString(0,2,"Push Yellow");
         u8x8.drawString(0,5,"To Prime");
         u8x8.refreshDisplay();
-        if (btn2State == 1){
+        if (selButton == 1){
           prime();
-          btn2State = 0;
+          selButton = 0;
+          mnu = 0;
+          u8x8.clear();
+          u8x8.refreshDisplay();
+        }
+        break;
+      
+      case SERVICE_MENU2:
+        // prime pump?
+        u8x8.setFont(u8x8_font_amstrad_cpc_extended_f);
+        u8x8.drawString(0,2,"Push Yellow");
+        u8x8.drawString(0,5,"To Clean");
+        u8x8.refreshDisplay();
+        if (selButton == 1){
+          clean();
+          selButton = 0;
           mnu = 0;
           u8x8.clear();
           u8x8.refreshDisplay();
@@ -283,28 +356,38 @@ void loop(void)
 void handleBtnEvent(AceButton* button, uint8_t eventType, uint8_t /* buttonState */) {
   uint8_t pin = button->getPin();
   switch (eventType) {
-    /*case AceButton::kEventClicked:
-      if (pin == btn1Pin)
-        btn1State = 1;
-      else
-        btn2State = 1;
-      break;*/
     case AceButton::kEventPressed:
-      btnBothState += 1;
-      break;
-    case AceButton::kEventReleased:
-      btnBothState = 0; // reset 
-      //if (btnBothState != 1) { 
-        if (pin == btn1Pin)
-          btn1State = 1;
-        else
-          btn2State = 1;
-      //}
-      if (btn1State == 1 && btn2State == 1) {
+      if (pin == btn1Pin) btn1State = 1;
+      if (pin == btn2Pin) btn2State = 1;
+      if (btn1State == 1 && btn2State == 1) 
+      {
         btnBothState = 1;
         btn1State = 0;
         btn2State = 0;
       }
+      break;
+    case AceButton::kEventReleased:
+      /*if (btnBothState > 0) 
+      {
+        btnBothState = 0;
+        btn1State = 0;
+        btn2State = 0;
+        //return;
+      }*/
+      
+      if (pin == btn1Pin)
+      {
+        
+        if (btnBothState == 0 && btn1State == 1) {
+          mnuButton = 1;
+        }
+        btn1State = 0;
+      }
+      else if (pin == btn2Pin) {
+        if (btnBothState == 0 && btn2State == 1) selButton = 1;
+        btn2State = 0;
+      }
+        
       break;
   }
 }
